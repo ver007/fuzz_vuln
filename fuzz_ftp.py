@@ -9,7 +9,7 @@ __DATE__ = '22.10.2013'
 try:
 	import sys
 	import os
-	import subprocess
+	import argparse
 except ImportError,e:
         import sys
         sys.stdout.write("%s\n" %e)
@@ -25,46 +25,52 @@ class Fuzz:
 		for file in self.send_tcp_path, self.spk_directory:
 			if not os.path.exists(file):
 				print >> sys.stderr, "%s Doesn't Exists On The System  "% (file)
-				sys.exit(1)
+				sys.exit(2)
 
 
-	def run_fuzz(self, target, port):
+	def run_fuzz(self, target, port, start_point):
+
 		if not self.spk_directory.endswith("/"):
                 	self.spk_directory = self.spk_directory + "/"
 
+		count = start_point
 		for root, dirs, files in os.walk(self.spk_directory):
-    			for file in files:
+			if (len(files)-1) < start_point:
+				print >> sys.stderr, "Start_Point Must Be Smaller Than File List !!!"
+				sys.exit(3)
+		
+    			for file in files[count:]:
         			if file.endswith('.spk'):
 					file_name = self.spk_directory + file
 					fuzz_command = "%s %s %s %s 0 0"% (self.send_tcp_path, target, port, file_name)
 
-					print "%s : Processing"% (file)
-					proc = subprocess.Popen(fuzz_command, shell=True,
-                        			stdout = subprocess.PIPE,
-						stderr = subprocess.PIPE
-                        		)
-                							
-					out, err = proc.communicate()
-					errcode = proc.returncode
-	
-					if errcode == 0:
-			 			print "%s : Ok"% file
-						os.unlink(file_name)
+					print "%d -> %s : Processing"% (count, file)
+
+					proc = os.popen(fuzz_command,"r")
+					while 1:
+    						line = proc.readline()
+    						if not line:
+							print "%d -> %s : Ok"% (count, file)
+							break
+
+					count = count + 1
+
 					
+					
+
+##
+### Main, go go go ...
+##
 
 if __name__ == "__main__":
 	
-	if not len(sys.argv) == 4:
-		print >> sys.stderr, "Usage: %s <spk_directory> <target> <port>"% (sys.argv[0])
-		sys.exit(2)
+	parser = argparse.ArgumentParser(description='Fuzz the vuln app')
+	parser.add_argument('-d','--directory', help='Spk Directory', required=True)
+	parser.add_argument('-t','--target', help='Target Ip Address', required=True)
+	parser.add_argument('-p','--port', help='Port Number', required=True)
+	parser.add_argument('-s','--start_point', help='Start Point', required=True)
+	args = parser.parse_args()
 
-	spk_directory = sys.argv[1]
-	target = sys.argv[2]
-	port = sys.argv[3]
-	
-	fuzz = Fuzz(spk_directory)
-	try:
-		file_list = fuzz.run_fuzz(target, port)
-	except Exception, err:
-		print >> sys.stderr, "Error: %s"% (err.message)
-		sys.exit(3)
+	fuzz = Fuzz(args.directory)
+	file_list = fuzz.run_fuzz(args.target, args.port, int(args.start_point))
+
