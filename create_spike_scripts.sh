@@ -8,20 +8,14 @@ then
 fi
 
 scripts_dir="$1"
-
-echo "$scripts_dir" | grep -qE "/$"
-if [ $?  -eq 0 ]
+if [ ! -d "$scripts_dir" ]
 then
-        scripts_dir="`echo "$scripts_dir" | tr -d "/"`"
-	if [ ! -d "$scripts_dir" ]
-	then
-        	mkdir "$scripts_dir"
-		cd "$scripts_dir"
-	else
-        	rm -rf "$scripts_dir"
-        	mkdir "$scripts_dir"
-		cd "$scripts_dir"
-	fi
+        mkdir "$scripts_dir"
+	cd "$scripts_dir"
+else
+        rm -rf "$scripts_dir"
+        mkdir "$scripts_dir"
+	cd "$scripts_dir"
 fi
 
 for cmd_name in HELP STATS RTIME LTIME SRUN TRUN GMON GDOG KSTET GTER HTER KSTAN EXIT
